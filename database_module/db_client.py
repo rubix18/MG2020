@@ -11,13 +11,13 @@ CONFIG_FILE_PATH = 'database_module/config/config.yml'
 
 
 def main(): 
-    engine = initialise_db(CONFIG_FILE_PATH)
-    print(select_all('people', engine))
+    engine = init_conn(CONFIG_FILE_PATH)
+    print(select_all('events', engine))
     print(socket.gethostname())
     pass
 
 
-def initialise_db(config):
+def init_conn(config):
     """
     Read local config file for database connection information and return connected database object
     """
