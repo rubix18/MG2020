@@ -2,7 +2,7 @@
 Define events as any significant event captured by any of the raspberry pi's that calls for recording of some information into central database. 
 
 ### Database tables and their columns: 
-
+```
 Column Name         Column Type             Description
 
 Events
@@ -11,7 +11,7 @@ source              varchar(50)             (hostname of device that the event m
 ts                  timestamp               (timestamp of event message)
 ball_location       varchar(50)             (string vector containing absolute ball position)
 player_location     varchar(50)             (string vector containing one or more absolute player positions)
-
+```
 
 
 ## Section 1. 
