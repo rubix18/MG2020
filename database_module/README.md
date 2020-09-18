@@ -1,6 +1,9 @@
 ##  Database schema: 
 Define events as any significant event captured by any of the raspberry pi's that calls for recording of some information into central database. 
 
+DDL:
+create table events(id serial primary key, src varchar(50) not null, ts timestamptz default clock_timestamp(), ball varchar(50), players varchar(50));
+
 ### Database tables and their columns: 
 ```
 Column Name         Column Type             Description
