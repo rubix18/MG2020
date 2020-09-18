@@ -5,12 +5,14 @@ Define events as any significant event captured by any of the raspberry pi's tha
 
 Column Name         Column Type             Description
 --------------------------------------------------------------------------------------------------------------
+
 Events
 id (PK)             serial                 (arbitrary auto-incrementing integer)
 source              varchar(50)             (hostname of device that the event message came from)
 ts                  timestamp               (timestamp of event message)
 ball_location       varchar(50)             (string vector containing absolute ball position)
 player_location     varchar(50)             (string vector containing one or more absolute player positions)
+
 --------------------------------------------------------------------------------------------------------------
 
 
