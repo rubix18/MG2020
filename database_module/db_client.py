@@ -15,11 +15,11 @@ def main():
     # print(select_all('events', engine))
     # print(socket.gethostname())
 
-    update([1, 2], [3, 4], engine)
+    update([1, 2], [[3, 4], [30, 40], [32, 10]], engine)
     print(select_all('events', engine))
     pass
 
-def update(players_xy, ball_xy, engine):
+def update(ball_xy, players_xy, engine):
     if players_xy is None: 
         update_query = f"insert into events (src, ball) values ('{socket.gethostname()}', '{ball_xy}');"
     elif ball_xy is None: 
