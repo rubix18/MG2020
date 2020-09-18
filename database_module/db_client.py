@@ -1,20 +1,39 @@
+"""
+Database client script
+- Allows reading and writing to database defined in config.yml
+"""
+
 import yaml, socket
 import pandas as pd
 from sqlalchemy import create_engine
 
+CONFIG_FILE_PATH = 'database_module/config/config.yml'
 
-def main():
-    with open('database_module/config/config.yml') as file:
-        conf = yaml.load(file, Loader=yaml.FullLoader)
 
-    # Using sqlalchemy and pandas 
-    engine = create_engine(conf['URI'])
-    query = 'select * from people'
-    result = pd.read_sql_query(query, engine) 
-    print(result)
-    
+def main(): 
+    engine = initialise_db(CONFIG_FILE_PATH)
+    print(select_all('people', engine))
     print(socket.gethostname())
+    pass
 
+
+def initialise_db(config):
+    """
+    Read local config file for database connection information and return connected database object
+    """
+    with open(config) as file:
+        conf = yaml.load(file, Loader=yaml.FullLoader)
+    engine = create_engine(conf['URI']) # Using sqlalchemy
+    return engine
+
+
+def select_all(table_name, engine):
+    """
+    Returns dataframe of specified table
+    """
+    query = f'select * from {table_name}'
+    result = pd.read_sql_query(query, engine) # Using pandas 
+    return result
 
 
 if __name__ == "__main__":
