@@ -12,9 +12,24 @@ CONFIG_FILE_PATH = 'database_module/config/config.yml'
 
 def main(): 
     engine = init_conn(CONFIG_FILE_PATH)
+    # print(select_all('events', engine))
+    # print(socket.gethostname())
+
+    update([1, 2], [3, 4], engine)
     print(select_all('events', engine))
-    print(socket.gethostname())
     pass
+
+def update(players_xy, ball_xy, engine):
+    if players_xy is None: 
+        update_query = f"insert into events (src, ball) values ('{socket.gethostname()}', '{ball_xy}');"
+    elif ball_xy is None: 
+        update_query = f"insert into events (src, players) values ('{socket.gethostname()}', '{players_xy}');"
+    else: 
+        update_query = f"insert into events (src, ball, players) values ('{socket.gethostname()}', '{ball_xy}', '{players_xy}');"
+    
+    with engine.connect() as con:
+        result = con.execute(update_query)
+    print(result)
 
 
 def init_conn(config):

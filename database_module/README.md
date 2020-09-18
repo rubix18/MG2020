@@ -27,7 +27,7 @@ Overview:
 2. Create new database user
 3. Create database
 4. Edit config files to allow remote connections
-5. Restart postgres database service
+5. Restart postgres database service: sudo service postgresql start
 6. Connect from remote computer (using DBeaver, PgAdmin, or Python)
 
 
