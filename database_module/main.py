@@ -1,7 +1,7 @@
 import db_client as dbc   # import the db client library
 
 
-CONFIG_FILE_PATH = 'database_module/config/config.yml'
+CONFIG_FILE_PATH = 'config/config.yml'
 
 def main(): 
     engine = dbc.init_conn(CONFIG_FILE_PATH)

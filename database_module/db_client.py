@@ -7,7 +7,7 @@ import yaml, socket, time
 import pandas as pd
 from sqlalchemy import create_engine
 
-CONFIG_FILE_PATH = 'database_module/config/config.yml'
+CONFIG_FILE_PATH = 'config/config.yml'
 
 
 def main(): 
