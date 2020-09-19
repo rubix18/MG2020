@@ -39,6 +39,20 @@ def init_conn(config):
     with open(config) as file:
         conf = yaml.load(file, Loader=yaml.FullLoader)
     engine = create_engine(conf['URI']) # Using sqlalchemy
+
+    # Create schema if doesn't exist 
+    stmt = """ CREATE TABLE IF NOT EXISTS public.events (
+        id serial NOT NULL,
+        src varchar(50) NOT NULL,
+        src_loc varchar(50),
+        ts timestamptz NULL DEFAULT clock_timestamp(),
+        ball varchar(50) NULL,
+        players varchar(50) NULL,
+        CONSTRAINT events_pkey PRIMARY KEY (id)
+        ); """
+    with engine.connect() as con: 
+        con.execute(stmt)
+
     return engine
 
 
