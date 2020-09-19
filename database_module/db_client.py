@@ -3,7 +3,7 @@ Database client script
 - Allows reading and writing to database defined in config.yml
 """
 
-import yaml, socket
+import yaml, socket, time
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -15,17 +15,17 @@ def main():
     # print(select_all('events', engine))
     # print(socket.gethostname())
 
-    update([1, 2], [[3, 4], [30, 40], [32, 10]], engine)
-    print(select_all('events', engine))
+    # update('right corner', [1, 2], [[3, 4], [30, 40], [32, 10]], engine)
+    
     pass
 
-def update(ball_xy, players_xy, engine):
+def update(src_loc, ball_xy, players_xy, engine):
     if players_xy is None: 
-        update_query = f"insert into events (src, ball) values ('{socket.gethostname()}', '{ball_xy}');"
+        update_query = f"insert into events (src, src_loc, ball) values ('{socket.gethostname()}', '{src_loc}', '{ball_xy}');"
     elif ball_xy is None: 
-        update_query = f"insert into events (src, players) values ('{socket.gethostname()}', '{players_xy}');"
+        update_query = f"insert into events (src, src_loc, players) values ('{socket.gethostname()}', '{src_loc}', '{players_xy}');"
     else: 
-        update_query = f"insert into events (src, ball, players) values ('{socket.gethostname()}', '{ball_xy}', '{players_xy}');"
+        update_query = f"insert into events (src, src_loc, ball, players) values ('{socket.gethostname()}', '{src_loc}', '{ball_xy}', '{players_xy}');"
     
     with engine.connect() as con:
         result = con.execute(update_query)
@@ -64,6 +64,14 @@ def select_all(table_name, engine):
     result = pd.read_sql_query(query, engine) # Using pandas 
     return result
 
+def ping_test(engine): 
+    """
+    For testing purposes: Continuously insert into database every 1 second
+    """
+    while True:
+        update('right corner', [1, 2], [[3, 4], [30, 40], [32, 10]], engine)
+        print(select_all('events', engine))
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
