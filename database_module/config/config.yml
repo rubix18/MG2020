@@ -3,5 +3,5 @@
 # Kevins home network for testing purposes
 # URI: postgresql://pi:MG2020@192.168.1.112:5432/test
 
-# The Raspi's hotspot 
+# The Raspi's hotspot (hotspot pw: hallohallo)
 URI: postgresql://pi:MG2020@10.3.141.1:5432/test
