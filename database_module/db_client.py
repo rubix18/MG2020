@@ -1,5 +1,6 @@
 """
-Database client script
+Database client library - use these functions in your main code file by importing
+this file, and then use these functions to input/output to DataBase. 
 - Allows reading and writing to database defined in config.yml
 """
 

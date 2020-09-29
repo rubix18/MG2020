@@ -1,3 +1,8 @@
+"""
+Example script utilising the db_client library. 
+
+ENSURE THAT DIRECTORY SET TO THE ROOT OF WHERE THIS FILE LOCATED. 
+"""
 import db_client as dbc   # import the db client library
 
 
