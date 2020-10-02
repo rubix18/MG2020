@@ -2,11 +2,16 @@
 Example script utilising the db_client library. 
 """
 
-from dbclient.dbclient import engine, ping_test, update, select_all
+from dbclient.dbclient import (
+    engine,     # database object
+    # functions
+    ping_test,  # usage: ping_test(engine)
+    update,     # usage: update(src_loc, ball_xy, players_xy, engine)
+    select_all  # usage: select_all(table_name, engine)
+)
 
 def main(): 
-    truncate(engine)
-    # ping_test(engine)
+    ping_test(engine)
 
 if __name__ == "__main__":
     main()
