@@ -12,6 +12,8 @@ import sys
 import time
 from threading import Thread
 import importlib.util
+import ffmpeg
+import queue
 
 # Import database client 
 # from dbclient import dbclient as db
@@ -20,10 +22,11 @@ import importlib.util
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
-    def __init__(self,resolution=(640,480),framerate=30,camera=0):
+    def __init__(self,resolution=(320,240),framerate=30,camera=0):
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(camera)
-        ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        self.queue = queue.Queue(900)
+#         ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
             
@@ -49,6 +52,14 @@ class VideoStream:
 
             # Otherwise, grab the next frame from the stream
             (self.grabbed, self.frame) = self.stream.read()
+            
+            # Update queue
+            if not self.queue.full():
+                self.queue.put(self.frame)
+            else:
+                self.queue.get()
+                self.queue.put(self.frame)
+            
 
     def read(self):
 	# Return the most recent frame
@@ -57,6 +68,26 @@ class VideoStream:
     def stop(self):
 	# Indicate that the camera and thread should be stopped
         self.stopped = True
+        
+    def saveStream(self):
+        frames = np.array(self.queue.queue)
+        _, height, width, _ = frames.shape
+        process = (
+            ffmpeg
+                .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
+                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+                .overwrite_output()
+                .run_async(pipe_stdin=True)
+        )
+        for frame in frames:
+            process.stdin.write(
+                frame
+                    .astype(np.uint8)
+                    .tobytes()
+            )
+        process.stdin.close()
+        process.wait()
+        
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
@@ -216,8 +247,13 @@ while True:
     frame_rate_calc= 1/time1
 
     # Press 'q' to quit
-    if cv2.waitKey(1) == ord('q'):
+    key = cv2.waitKey(1)
+    if key == ord('q'):
+        print("Quitting")
         break
+    elif key == ord('s'):
+        print("Saving")
+        videostream.saveStream()
 
 # Clean up
 cv2.destroyAllWindows()
