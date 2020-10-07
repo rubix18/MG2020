@@ -6,17 +6,22 @@ import cv2
 print("Started")
 cap = cv2.VideoCapture(-1)
 
-while True:
-	print("Captured video")
-	ret, img = cap.read()
+img = cap.read() # Initial image
 
-	print("Here 1")
+while True:
+	ret, img = cap.read()
+	imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
 	cv2.imshow("image", img)
 
-	if cv2.waitKey(1 == 27):
-		break
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+        	break
 
-cv2.destroyAllWindows()
 
-print("Here 3")
+cv2.imshow("image", img)
+cv2.waitKey(0)
+
+#cv2.destroyAllWindows()
+
+#print("Here 3")
 cap.release()
