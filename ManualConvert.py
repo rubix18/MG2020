@@ -42,9 +42,18 @@ def click_event_2(event, x, y, flags, param):
 
 
 
-#Here, you need to change the image name and it's path according to your directory
+# Capture image from Webcam
+cam = cv2.VideoCapture(-1)
+ret, img = cam.read()
 
-img = cv2.imread(image_file)
+if not ret:
+    print("Failed to grab frame")
+
+#cam.release()
+# Or use prefill image
+#Here, you need to change the image name and it's path according to your directory
+#img = cv2.imread(image_file)
+
 cv2.imshow("image", img)
 
 #calling the mouse click event
@@ -75,8 +84,8 @@ angle = -50
 scale = 0.6
 rot_mat = cv2.getRotationMatrix2D( center, angle, scale )
 warp_rotate_dst = cv2.warpAffine(warp_dst, rot_mat, (warp_dst.shape[1], warp_dst.shape[0]))
-cv2.imshow('Source image', field_img)
-#cv2.imshow('Warp', warp_dst)
+#cv2.imshow('Source image', field_img)
+cv2.imshow('Warp', warp_dst)
 #cv2.imshow('Warp + Rotate', warp_rotate_dst)
 cv2.waitKey(0)
 
