@@ -43,18 +43,20 @@ def click_event_2(event, x, y, flags, param):
 
 
 # Capture image from Webcam
-cam = cv2.VideoCapture(-1)
+cam = cv2.VideoCapture(0)
 ret, img = cam.read()
 
 if not ret:
     print("Failed to grab frame")
 
-#cam.release()
+frame = img.copy()
+frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
 # Or use prefill image
 #Here, you need to change the image name and it's path according to your directory
 #img = cv2.imread(image_file)
 
-cv2.imshow("image", img)
+cv2.imshow("image", frame_rgb)
 
 #calling the mouse click event
 cv2.setMouseCallback("image", click_event)
@@ -70,14 +72,13 @@ cv2.waitKey(0)
 
 cv2.destroyAllWindows()
 
-
 rows,cols,ch = img.shape
 
 srcTri = np.float32(point_list)
 dstTri = np.float32(field_point)
 
 warp_mat = cv2.getAffineTransform(srcTri, dstTri)
-warp_dst = cv2.warpAffine(img, warp_mat, (img.shape[1], img.shape[0]))
+warp_dst = cv2.warpAffine(frame_rgb, warp_mat, (frame.rgb.shape[1], frame.rgb.shape[0]))
 # Rotating the image after Warp
 center = (warp_dst.shape[1]//2, warp_dst.shape[0]//2)
 angle = -50
@@ -87,5 +88,7 @@ warp_rotate_dst = cv2.warpAffine(warp_dst, rot_mat, (warp_dst.shape[1], warp_dst
 #cv2.imshow('Source image', field_img)
 cv2.imshow('Warp', warp_dst)
 #cv2.imshow('Warp + Rotate', warp_rotate_dst)
+
+cam.release()
 cv2.waitKey(0)
 
