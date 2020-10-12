@@ -42,14 +42,32 @@ def click_event_2(event, x, y, flags, param):
 
 
 
-#Here, you need to change the image name and it's path according to your directory
+# Capture image from Webcam
+cap = cv2.VideoCapture(-1)
+img = cap.read() # Initial image
 
-img = cv2.imread(image_file)
+while True:
+        ret, img = cap.read()
+        imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        cv2.imshow("image", img)
+        if cv2.waitKey(1) & 0xFF == ord('c'):
+                break
+
 cv2.imshow("image", img)
+
+#frame = img.copy()
+#frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+# Or use prefill image
+#Here, you need to change the image name and it's path according to your directory
+#img = cv2.imread(image_file)
+
 
 #calling the mouse click event
 cv2.setMouseCallback("image", click_event)
 cv2.waitKey(0)
+cap.release()
 
 
 field_img = cv2.imread(field_file)
@@ -61,50 +79,23 @@ cv2.waitKey(0)
 
 cv2.destroyAllWindows()
 
-# calculations
-l = len(point_list)
-B = np.vstack([np.transpose(point_list), np.ones(l)])
-D = 1.0 / np.linalg.det(B)
-entry = lambda r,d: np.linalg.det(np.delete(np.vstack([r, B]), (d+1), axis=0))
-M = [[(-1)**i * D * entry(R, i) for i in range(l)] for R in np.transpose(field_point)]
-A, t = np.hsplit(np.array(M), [l-1])
-t = np.transpose(t)[0]
+rows,cols,ch = img.shape
 
-# output
-print("Affine transformation matrix:\n", A)
-print("Affine transformation translation vector:\n", t)
-# unittests
-print("TESTING:")
-for p, P in zip(np.array(point_list), np.array(field_point)):
-  image_p = np.dot(A, p) + t
-  result = "[OK]" if np.allclose(image_p, P) else "[ERROR]"
-  print(p, " mapped to: ", image_p, " ; expected: ", P, result)
+srcTri = np.float32(point_list)
+dstTri = np.float32(field_point)
 
+warp_mat = cv2.getAffineTransform(srcTri, dstTri)
+warp_dst = cv2.warpAffine(img, warp_mat, (img.shape[1], img.shape[0]))
+# Rotating the image after Warp
+center = (warp_dst.shape[1]//2, warp_dst.shape[0]//2)
+angle = -50
+scale = 0.6
+rot_mat = cv2.getRotationMatrix2D( center, angle, scale )
+warp_rotate_dst = cv2.warpAffine(warp_dst, rot_mat, (warp_dst.shape[1], warp_dst.shape[0]))
+#cv2.imshow('Source image', field_img)
+cv2.imshow('Warp', warp_dst)
+#cv2.imshow('Warp + Rotate', warp_rotate_dst)
 
-print("Transform new point:")
-test_point = [881, 273]
-image_p = np.dot(A, test_point) + t
-print(test_point, " mapped to: ", image_p)
+cv2.waitKey(0)
 
-
-
-
-# rows,cols,ch = img.shape
-#
-# srcTri = np.float32(point_list)
-# dstTri = np.float32(field_point)
-#
-# warp_mat = cv2.getAffineTransform(srcTri, dstTri)
-# warp_dst = cv2.warpAffine(img, warp_mat, (img.shape[1], img.shape[0]))
-#
-# # Rotating the image after Warp
-# center = (warp_dst.shape[1]//2, warp_dst.shape[0]//2)
-# angle = -50
-# scale = 0.6
-# rot_mat = cv2.getRotationMatrix2D( center, angle, scale )
-# warp_rotate_dst = cv2.warpAffine(warp_dst, rot_mat, (warp_dst.shape[1], warp_dst.shape[0]))
-# cv2.imshow('Source image', field_img)
-# #cv2.imshow('Warp', warp_dst)
-# #cv2.imshow('Warp + Rotate', warp_rotate_dst)
-# cv2.waitKey(0)
 
