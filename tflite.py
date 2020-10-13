@@ -1,7 +1,9 @@
-# Code from: https://github.com/EdjeElectronics/TensorFlow-Lite-Object-Detection-on-Android-and-Raspberry-Pi
-# Added database client code 
-
 # [USAGE]: python3 tflite.py --modeldir=model
+
+# NOTES: 
+# Press S to save replay 
+# Press Q to quit 
+
 
 # Import packages
 import os
@@ -26,7 +28,7 @@ class VideoStream:
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(camera)
         self.queue = queue.Queue(900)
-#         ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        # ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
             
@@ -88,6 +90,8 @@ class VideoStream:
         process.stdin.close()
         process.wait()
         
+def sendToDatabase():
+    pass
 
 def main():
     # Define and parse input arguments
@@ -215,6 +219,11 @@ def main():
         scores = interpreter.get_tensor(output_details[2]['index'])[0] # Confidence of detected objects
         #num = interpreter.get_tensor(output_details[3]['index'])[0]  # Total number of detected objects (inaccurate and not needed)
 
+
+        # Initialise lists to store labels and centerpoints 
+        centerpoints = []
+        detection_labels = []
+
         # Loop over all detections and draw detection box if confidence is above minimum threshold
         for i in range(len(scores)):
             if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
@@ -225,16 +234,29 @@ def main():
                 xmin = int(max(1,(boxes[i][1] * imW)))
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
-                
+                xcen = int(xmin + (xmax-xmin)/2) 
+                ycen = int(ymin + (ymax-ymin)/2) 
+                centerpoints.append((xcen, ycen))   # Append centerpoint to list of centerpoints to be sent to database 
+
+                # Mark centerpoint on frame to make sure we have correct image centerpoint coords 
+                frame[ycen-5:ycen+5, xcen-5:xcen+5] = (0, 0, 255)
+
+                # Draw Bounding Box 
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
+                detection_labels.append(object_name)    # Append object name to list of object names to be sent to database 
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
                 label_ymin = max(ymin, labelSize[1] + 10) # Make sure not to draw label too close to top of window
                 cv2.rectangle(frame, (xmin, label_ymin-labelSize[1]-10), (xmin+labelSize[0], label_ymin+baseLine-10), (255, 255, 255), cv2.FILLED) # Draw white box to put label text in
                 cv2.putText(frame, label, (xmin, label_ymin-7), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2) # Draw label text
+
+
+        # Send results to database 
+        # print(centerpoints, ', '.join(detection_labels))  # Debug print 
+        # db.update('right hand corner', centerpoints, ', '.join(detection_labels), db.engine)
 
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)

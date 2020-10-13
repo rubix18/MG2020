@@ -37,6 +37,7 @@ def init_conn(config):
     return engine
 
 def update(src_loc, ball_xy, players_xy, engine):
+    
     if players_xy is None: 
         update_query = f"insert into events (src, src_loc, ball) values ('{socket.gethostname()}', '{src_loc}', '{ball_xy}');"
     elif ball_xy is None: 
