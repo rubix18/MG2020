@@ -256,7 +256,7 @@ def main():
 
         # Send results to database 
         # print(centerpoints, ', '.join(detection_labels))  # Debug print 
-        # db.update('right hand corner', centerpoints, ', '.join(detection_labels), db.engine)
+        # db.update('right hand corner', centerpoints, ', '.join(detection_labels), db.engine) # Use join() to send labels as single string 
 
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
