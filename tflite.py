@@ -16,6 +16,7 @@ from threading import Thread
 import importlib.util
 import ffmpeg
 import queue
+import cameraCapture as cc
 
 # Import database client 
 # from dbclient import dbclient as db
@@ -185,10 +186,74 @@ def main():
     # Initialize frame rate calculation
     frame_rate_calc = 1
     freq = cv2.getTickFrequency()
+    
+    # Line detection code setup
+    image_file = 'line.jpg'
+    field_file = 'field.jpg'
+
+    point_list = []
+    field_point = []
+    # print("Started")
+    # cap = cv2.VideoCapture(-1)
+    #
+    # img = cap.read() # Initial image
+    #
+    # while True:
+    # 	ret, img = cap.read()
+    # 	imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #
+    # 	cv2.imshow("image", img)
+    #
+    # 	if cv2.waitKey(1) & 0xFF == ord('q'):
+    #         	break
+    #
+    #
+    # cv2.imshow("image", img)
+    # cv2.waitKey(0)
+
+    #Here, you need to change the image name and it's path according to your directory
+    test_img = cv2.imread(image_file)
+    cv2.imshow("image", test_img)
+
+    #calling the mouse click event
+    cv2.setMouseCallback("image", cc.click_event, test_img)
+    cv2.waitKey(0)
+
+    field_img = cv2.imread(field_file)
+    cv2.imshow("field_image", field_img)
+
+    #calling the mouse click event
+    cv2.setMouseCallback("field_image", cc.click_event_2, field_img)
+    cv2.waitKey(0)
+
+    cv2.destroyAllWindows()
+    A_matrix, translation_vector = cc.affineMatrix(point_list, field_point)
+
+    print("Transform new point:")
+    test_point = [625, 200]
+    image_p = np.dot(A_matrix, test_point) + translation_vector
+    print(test_point, " mapped to: ", image_p)
+    image = cv2.circle(field_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+
+    # # test_point = [[881, 273], [234, 456], [457, 389]]
+    # for p in np.array(test_point):
+    #   image_p = np.dot(A_matrix, p) + translation_vector
+    #   print(p, " mapped to: ", image_p)
+    #   image = cv2.circle(field_img, (image_p[0], image_p[1]), 1, (0, 0, 255), 1)
+
+    cv2.imshow("adjusted_image", image)
+    cv2.waitKey(0)
+    #print("Here 3")
+    # cap.release()
+
 
     # Initialize video stream
     videostream = VideoStream(resolution=(imW,imH),framerate=30, camera=camera).start()
     time.sleep(1)
+
+
+
+
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
     while True:
