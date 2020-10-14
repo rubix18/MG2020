@@ -70,9 +70,14 @@ cv2.destroyAllWindows()
 A_matrix, translation_vector = am.affineMatrix(point_list, field_point)
 
 print("Transform new point:")
-test_point = [881, 273]
-image_p = np.dot(A_matrix, test_point) + translation_vector
-print(test_point, " mapped to: ", image_p)
+test_point = [[881, 273], [234, 456], [457, 389]]
+for p in np.array(test_point):
+  image_p = np.dot(A_matrix, p) + translation_vector
+  print(p, " mapped to: ", image_p)
+  image = cv2.circle(field_img, image_p, 1, )
+
+# image_p = np.dot(A_matrix, test_point) + translation_vector
+# print(test_point, " mapped to: ", image_p)
 
 #print("Here 3")
 # cap.release()
