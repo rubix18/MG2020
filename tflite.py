@@ -193,66 +193,58 @@ def main():
 
     point_list = []
     field_point = []
-    # print("Started")
-    # cap = cv2.VideoCapture(-1)
-    #
-    # img = cap.read() # Initial image
-    #
-    # while True:
-    # 	ret, img = cap.read()
-    # 	imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #
-    # 	cv2.imshow("image", img)
-    #
-    # 	if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         	break
-    #
-    #
-    # cv2.imshow("image", img)
+    print("Started")
+    cap = cv2.VideoCapture(-1)
+    
+    test_img = cap.read() # Initial image
+    
+    while True:
+    	ret, test_img = cap.read()
+    	imgGray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
+    
+    	cv2.imshow("image", test_img)
+    
+    	if cv2.waitKey(1) & 0xFF == ord('c'):
+            	break
+    
+    
+    cv2.imshow("image", test_img)
     # cv2.waitKey(0)
 
     #Here, you need to change the image name and it's path according to your directory
-    test_img = cv2.imread(image_file)
-    cv2.imshow("image", test_img)
+    # test_img = cv2.imread(image_file)
+    # cv2.imshow("image", test_img)
 
     #calling the mouse click event
-    cv2.setMouseCallback("image", cc.click_event, test_img)
+    cv2.setMouseCallback("image", cc.click_event, [test_img, point_list])
     cv2.waitKey(0)
 
     field_img = cv2.imread(field_file)
     cv2.imshow("field_image", field_img)
 
     #calling the mouse click event
-    cv2.setMouseCallback("field_image", cc.click_event_2, field_img)
+    cv2.setMouseCallback("field_image", cc.click_event_2, [field_img, field_point])
     cv2.waitKey(0)
 
     cv2.destroyAllWindows()
     A_matrix, translation_vector = cc.affineMatrix(point_list, field_point)
 
-    print("Transform new point:")
-    test_point = [625, 200]
-    image_p = np.dot(A_matrix, test_point) + translation_vector
-    print(test_point, " mapped to: ", image_p)
-    image = cv2.circle(field_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+    #print(point_list, field_point)
 
-    # # test_point = [[881, 273], [234, 456], [457, 389]]
-    # for p in np.array(test_point):
-    #   image_p = np.dot(A_matrix, p) + translation_vector
-    #   print(p, " mapped to: ", image_p)
-    #   image = cv2.circle(field_img, (image_p[0], image_p[1]), 1, (0, 0, 255), 1)
+    # print("Transform new point:")
+    # test_point = [625, 200]
+    # image_p = np.dot(A_matrix, test_point) + translation_vector
+    # print(test_point, " mapped to: ", image_p)
+    # image = cv2.circle(field_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
 
-    cv2.imshow("adjusted_image", image)
-    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     #print("Here 3")
-    # cap.release()
-
+    cap.release()
+    time.sleep(5)
 
     # Initialize video stream
     videostream = VideoStream(resolution=(imW,imH),framerate=30, camera=camera).start()
     time.sleep(1)
-
-
-
 
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
@@ -287,9 +279,12 @@ def main():
 
         # Initialise lists to store labels and centerpoints 
         centerpoints = []
+        adjustedpoints = []
         detection_labels = []
+        f_img = cv2.imread(field_file)
 
         # Loop over all detections and draw detection box if confidence is above minimum threshold
+        
         for i in range(len(scores)):
             if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
 
@@ -300,11 +295,18 @@ def main():
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
                 xcen = int(xmin + (xmax-xmin)/2) 
-                ycen = int(ymin + (ymax-ymin)/2) 
+                # ycen = int(ymin + (ymax-ymin)/2) 
+                ycen = int(ymax) 
                 centerpoints.append((xcen, ycen))   # Append centerpoint to list of centerpoints to be sent to database 
 
                 # Mark centerpoint on frame to make sure we have correct image centerpoint coords 
                 frame[ycen-5:ycen+5, xcen-5:xcen+5] = (0, 0, 255)
+
+                # Aplly affine matrix
+                image_p = np.dot(A_matrix, (xcen,ycen)) + translation_vector
+                adjustedpoints.append(image_p)
+                field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                cv2.imshow("adjusted_image", field_image_with_point)
 
                 # Draw Bounding Box 
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
@@ -327,7 +329,7 @@ def main():
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame)
+        # cv2.imshow('Object detector', frame)
 
         # Calculate framerate
         t2 = cv2.getTickCount()
