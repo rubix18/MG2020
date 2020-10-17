@@ -293,18 +293,19 @@ def main():
             print("Saving")
             videostream.saveStream()
         
-        try: 
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
-            if replay_requested():
-                print("Saving Video File to Send To Server")
-                videostream.saveStream()
-                file = open('replay.mp4', 'rb')
-                send_replay(file)
+        try: 
+        if replay_requested():
+            print("Saving Video File to Send To Server")
+            videostream.saveStream()
+            file = open('replay.mp4', 'rb')
+            send_replay(file)
+            print('hello')
         except: 
-            print("[TFLITE]: Database error!")
+            print("[TFLITE]: Error! ")
 
-            
+
     # Clean up
     cv2.destroyAllWindows()
     videostream.stop()
