@@ -58,7 +58,7 @@ def init_conn(config):
     print(f'[DBCLIENT]: Database successfully connected and initialised')
     return engine
 
-def update(src_loc, ball_xy, players_xy, engine):
+def update(src_loc, ball_xy, players_xy):
     
     if players_xy is None: 
         update_query = f"insert into events (src, src_loc, ball) values ('{socket.gethostname()}', '{src_loc}', '{ball_xy}');"
@@ -70,7 +70,7 @@ def update(src_loc, ball_xy, players_xy, engine):
     with engine.connect() as con:
         result = con.execute(update_query)
 
-def select_all(table_name, engine):
+def select_all(table_name):
     """
     Returns dataframe of specified table
     """
@@ -78,7 +78,7 @@ def select_all(table_name, engine):
     result = pd.read_sql_query(query, engine) # Using pandas 
     return result
 
-def ping_test(engine): 
+def ping_test(): 
     """
     For testing purposes: Continuously insert into database every 1 second
     """
@@ -87,7 +87,7 @@ def ping_test(engine):
         print(select_all('events', engine))
         time.sleep(1)
 
-def truncate(engine):
+def truncate():
     """
     Clears all table values
     """
@@ -98,7 +98,7 @@ def truncate(engine):
     print('[DBCLIENT]: Reading events table: ')
     print(select_all('events', engine))
 
-def replay_requested(engine):
+def replay_requested():
     """
     Queries database to see if there is an outstanding flag toggled by server for replay video to be sent. 
     Returns 0 or 1
@@ -113,5 +113,5 @@ engine = init_conn(f'{dir_path}/config/config.yml')
 if __name__ == "__main__":
     while True: 
         time.sleep(1)
-        print(replay_requested(engine))
+        print(replay_requested())
     

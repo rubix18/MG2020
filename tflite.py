@@ -1,4 +1,4 @@
-# [USAGE]: python3 tflite.py --modeldir=model
+# [USAGE]: python3 tflite.py --modeldir=model --camera=0
 
 # NOTES: 
 # Press S to save replay 
@@ -19,7 +19,7 @@ import queue
 import requests
 
 # Import database client 
-# from dbclient import dbclient as db
+from dbclient import dbclient as db
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
@@ -257,7 +257,8 @@ def main():
 
         # Send results to database 
         # print(centerpoints, ', '.join(detection_labels))  # Debug print 
-        # db.update('right hand corner', centerpoints, ', '.join(detection_labels), db.engine) # Use join() to send labels as single string 
+        db.update('right hand corner', centerpoints, ', '.join(detection_labels)) # Use join() to send labels as single string 
+        print(db.select_all('events'))
 
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
