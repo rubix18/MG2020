@@ -19,13 +19,16 @@ import queue
 import requests
 
 # Import database client 
-from dbclient.dbclient import (
-    # functions
-    update,             # usage: update(src_loc, ball_xy, players_xy)
-    select_all,         # usage: select_all(table_name)
-    replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
-    send_replay         # usage: send_replay()
-)
+try:
+    from dbclient.dbclient import (
+        # functions
+        update,             # usage: update(src_loc, ball_xy, players_xy)
+        select_all,         # usage: select_all(table_name)
+        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
+        send_replay         # usage: send_replay()
+    )
+except: 
+    print("[TFLITE]: Database not found!")
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
@@ -263,8 +266,12 @@ def main():
 
         # Send results to database 
         # print(centerpoints, ', '.join(detection_labels))  # Debug print 
-        update('right hand corner', centerpoints, ', '.join(detection_labels)) # Use join() to send labels as single string 
-        # print(select_all('events'))
+        try: 
+            update('right hand corner', centerpoints, ', '.join(detection_labels)) # Use join() to send labels as single string 
+            # print(select_all('events'))
+        except: 
+            print("[TFLITE]: Database error!")
+
 
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
@@ -286,14 +293,18 @@ def main():
             print("Saving")
             videostream.saveStream()
         
+        try: 
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
-        if replay_requested():
-            print("Saving Video File to Send To Server")
-            videostream.saveStream()
-            file = open('replay.mp4', 'rb')
-            send_replay(file)
+            if replay_requested():
+                print("Saving Video File to Send To Server")
+                videostream.saveStream()
+                file = open('replay.mp4', 'rb')
+                send_replay(file)
+        except: 
+            print("[TFLITE]: Database error!")
 
+            
     # Clean up
     cv2.destroyAllWindows()
     videostream.stop()
