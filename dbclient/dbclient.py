@@ -30,10 +30,32 @@ def init_conn(config):
         ball varchar(50) NULL,
         players varchar(50) NULL,
         CONSTRAINT events_pkey PRIMARY KEY (id)
-        ); """
+        ); 
+        
+        CREATE TABLE IF NOT EXISTS public.flags (
+        hostname varchar(50) NOT NULL,
+        replay boolean default false,
+        CONSTRAINT flags_pkey PRIMARY KEY (hostname)
+        );
+        """
     with engine.connect() as con: 
         con.execute(stmt)
-    print(f'[DBCLIENT]: Engine successfully created')
+
+    # Check if flags table has this pi's (the pi running this script) hostname, if not, insert it. 
+    stmt = f"select count(*) from flags where hostname = '{socket.gethostname()}'"
+    exists = int(pd.read_sql_query(stmt, engine).iloc[0]) # Using pandas 
+    if not exists: 
+        stmt = f"insert into flags (hostname) values ('{socket.gethostname()}');"
+        with engine.connect() as con: 
+            con.execute(stmt)
+        print(f'[DBCLIENT]: Registered {socket.gethostname()} into flags table')
+
+    # Reset all replay flags to 0 
+    stmt = f"update flags set replay = false;"
+    with engine.connect() as con: 
+        con.execute(stmt)
+
+    print(f'[DBCLIENT]: Database successfully connected and initialised')
     return engine
 
 def update(src_loc, ball_xy, players_xy, engine):
@@ -76,8 +98,20 @@ def truncate(engine):
     print('[DBCLIENT]: Reading events table: ')
     print(select_all('events', engine))
 
+def replay_requested(engine):
+    """
+    Queries database to see if there is an outstanding flag toggled by server for replay video to be sent. 
+    Returns 0 or 1
+    """
+    query = f"select replay from flags where hostname = '{socket.gethostname()}';"
+    result = pd.read_sql_query(query, engine).bool()
+    return result 
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 engine = init_conn(f'{dir_path}/config/config.yml')
 
 if __name__ == "__main__":
-    pass
+    while True: 
+        time.sleep(1)
+        print(replay_requested(engine))
+    

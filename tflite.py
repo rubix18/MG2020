@@ -16,6 +16,7 @@ from threading import Thread
 import importlib.util
 import ffmpeg
 import queue
+import requests
 
 # Import database client 
 # from dbclient import dbclient as db
@@ -274,6 +275,8 @@ def main():
         if key == ord('q'):
             print("Quitting")
             break
+        # Instead of checking keypress, query database to see if request has been made for video file,
+        # if yes, execute saveStream(), then post the video to server
         elif key == ord('s'):
             print("Saving")
             videostream.saveStream()
