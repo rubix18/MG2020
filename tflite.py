@@ -12,11 +12,16 @@ import cv2
 import numpy as np
 import sys
 import time
-from threading import Thread
+import threading
 import importlib.util
 import ffmpeg
 import queue
+import cameraCapture as cc
+
+# Change to get rid of multithreading for saving video
+tryThreading = True
 import requests
+
 
 # Import database client 
 try:
@@ -99,9 +104,35 @@ class VideoStream:
             )
         process.stdin.close()
         process.wait()
+        file = open('replay.mp4', 'rb')
+        try:
+          send_replay(file)
+        except:
+          print("Send replay failed")
         
 def sendToDatabase():
     pass
+
+def saveVideoStream(q):
+    frames = np.array(q.queue)
+    _, height, width, _ = frames.shape
+    process = (
+        ffmpeg
+            .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
+            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+            .overwrite_output()
+            .run_async(pipe_stdin=True)
+    )
+    for frame in frames:
+        process.stdin.write(
+            frame
+                .astype(np.uint8)
+                .tobytes()
+        )
+    process.stdin.close()
+    process.wait()
+    file = open('replay.mp4', 'rb')
+    send_replay(file)
 
 def main():
     # Define and parse input arguments
@@ -195,10 +226,66 @@ def main():
     # Initialize frame rate calculation
     frame_rate_calc = 1
     freq = cv2.getTickFrequency()
+    
+    # Line detection code setup
+    image_file = 'line.jpg'
+    field_file = 'field.jpg'
+
+    point_list = []
+    field_point = []
+    print("Started")
+    cap = cv2.VideoCapture(-1)
+    
+    test_img = cap.read() # Initial image
+    
+    while True:
+    	ret, test_img = cap.read()
+    	imgGray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
+    
+    	cv2.imshow("image", test_img)
+    
+    	if cv2.waitKey(1) & 0xFF == ord('c'):
+            	break
+    
+    
+    cv2.imshow("image", test_img)
+    # cv2.waitKey(0)
+
+    #Here, you need to change the image name and it's path according to your directory
+    # test_img = cv2.imread(image_file)
+    # cv2.imshow("image", test_img)
+
+    #calling the mouse click event
+    cv2.setMouseCallback("image", cc.click_event, [test_img, point_list])
+    cv2.waitKey(0)
+
+    field_img = cv2.imread(field_file)
+    cv2.imshow("field_image", field_img)
+
+    #calling the mouse click event
+    cv2.setMouseCallback("field_image", cc.click_event_2, [field_img, field_point])
+    cv2.waitKey(0)
+
+    cv2.destroyAllWindows()
+    A_matrix, translation_vector = cc.affineMatrix(point_list, field_point)
+
+    #print(point_list, field_point)
+
+    # print("Transform new point:")
+    # test_point = [625, 200]
+    # image_p = np.dot(A_matrix, test_point) + translation_vector
+    # print(test_point, " mapped to: ", image_p)
+    # image = cv2.circle(field_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+
+    cv2.destroyAllWindows()
+    #print("Here 3")
+    cap.release()
+    time.sleep(5)
 
     # Initialize video stream
     videostream = VideoStream(resolution=(imW,imH),framerate=30, camera=camera).start()
     time.sleep(1)
+
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
     while True:
@@ -232,9 +319,12 @@ def main():
 
         # Initialise lists to store labels and centerpoints 
         centerpoints = []
+        adjustedpoints = []
         detection_labels = []
+        f_img = cv2.imread(field_file)
 
         # Loop over all detections and draw detection box if confidence is above minimum threshold
+        
         for i in range(len(scores)):
             if ((scores[i] > min_conf_threshold) and (scores[i] <= 1.0)):
 
@@ -245,11 +335,18 @@ def main():
                 ymax = int(min(imH,(boxes[i][2] * imH)))
                 xmax = int(min(imW,(boxes[i][3] * imW)))
                 xcen = int(xmin + (xmax-xmin)/2) 
-                ycen = int(ymin + (ymax-ymin)/2) 
+                # ycen = int(ymin + (ymax-ymin)/2) 
+                ycen = int(ymax) 
                 centerpoints.append((xcen, ycen))   # Append centerpoint to list of centerpoints to be sent to database 
 
                 # Mark centerpoint on frame to make sure we have correct image centerpoint coords 
                 frame[ycen-5:ycen+5, xcen-5:xcen+5] = (0, 0, 255)
+
+                # Aplly affine matrix
+                image_p = np.dot(A_matrix, (xcen,ycen)) + translation_vector
+                adjustedpoints.append(image_p)
+                field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                cv2.imshow("adjusted_image", field_image_with_point)
 
                 # Draw Bounding Box 
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
@@ -277,7 +374,7 @@ def main():
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame)
+        # cv2.imshow('Object detector', frame)
 
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -291,17 +388,23 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
-            videostream.saveStream()
+            if tryThreading:
+                thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+                thread.start()
+            else:
+                videostream.saveStream()
         
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
         try: 
-            if replay_requested():
-                print("Saving Video File to Send To Server")
-                videostream.saveStream()
-                file = open('replay.mp4', 'rb')
-                send_replay(file)
-                print('hello')
+          if replay_requested():
+              print("Saving Video File to Send To Server")
+              if tryThreading:
+                  thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+                  thread.start()
+              else:
+                  videostream.saveStream()
+              print('hello')
         except: 
             print("[TFLITE]: Error! ")
 
