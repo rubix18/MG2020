@@ -12,11 +12,14 @@ import cv2
 import numpy as np
 import sys
 import time
-from threading import Thread
+import threading
 import importlib.util
 import ffmpeg
 import queue
 import cameraCapture as cc
+
+# Change to get rid of multithreading for saving video
+tryThreading = True
 
 # Import database client 
 # from dbclient import dbclient as db
@@ -93,6 +96,25 @@ class VideoStream:
         
 def sendToDatabase():
     pass
+
+def saveVideoStream(q):
+    frames = np.array(q.queue)
+    _, height, width, _ = frames.shape
+    process = (
+        ffmpeg
+            .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
+            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+            .overwrite_output()
+            .run_async(pipe_stdin=True)
+    )
+    for frame in frames:
+        process.stdin.write(
+            frame
+                .astype(np.uint8)
+                .tobytes()
+        )
+    process.stdin.close()
+    process.wait()
 
 def main():
     # Define and parse input arguments
@@ -343,7 +365,11 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
-            videostream.saveStream()
+            if tryThreading:
+                thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+                thread.start()
+            else:
+                videostream.saveStream()
 
     # Clean up
     cv2.destroyAllWindows()
