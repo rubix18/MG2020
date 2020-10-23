@@ -296,12 +296,12 @@ def main():
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
         try: 
-        if replay_requested():
-            print("Saving Video File to Send To Server")
-            videostream.saveStream()
-            file = open('replay.mp4', 'rb')
-            send_replay(file)
-            print('hello')
+            if replay_requested():
+                print("Saving Video File to Send To Server")
+                videostream.saveStream()
+                file = open('replay.mp4', 'rb')
+                send_replay(file)
+                print('hello')
         except: 
             print("[TFLITE]: Error! ")
 

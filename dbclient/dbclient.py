@@ -114,11 +114,7 @@ def send_replay(file):
     url = conf['URL'] + '/upload'
     x = requests.post(url, files = files)
     print('[DBCLIENT]: Sent file to server ', x)
-    # after sending the file, reset the pi's own flag to 0 
-    stmt = f"update flags set replay = false where hostname = '{socket.gethostname()}';"
-    with engine.connect() as con: 
-        con.execute(stmt)
-    print(f'[DBCLIENT]: Reset replay requested flag for {socket.gethostname()}')
+    clear_replay()
 
 def get_hostnames():
     query = "select distinct hostname from flags;"
@@ -131,15 +127,22 @@ def request_replay(hostname):
         con.execute(stmt)
     print(f'[DBCLIENT]: Set replay requested flag for {socket.gethostname()}')
 
+def clear_replay(): 
+    # after sending the file, reset the pi's own flag to 0 
+    stmt = f"update flags set replay = false where hostname = '{socket.gethostname()}';"
+    with engine.connect() as con: 
+        con.execute(stmt)
+    print(f'[DBCLIENT]: Reset replay requested flag for {socket.gethostname()}')
+
 def wait(hostname):
-    timeout_count = 1
+    timeout_count = 10
     while True: 
         if not replay_requested(hostname):
             return True 
-        print(f'[DBCLIENT]: Waiting for replay file to be sent from {hostname}')
+        print(f'[DBCLIENT]: Waiting for replay file to be sent from {hostname} {timeout_count}')
         time.sleep(1)
-        timeout_count += 1 
-        if timeout_count > 5: 
+        timeout_count -= 1 
+        if timeout_count <= 0: 
             print(f'[DBCLIENT]: TIMEOUT from {hostname} OCCURRED')
             return False 
 
@@ -148,10 +151,10 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 engine = init_conn(f'{dir_path}/config/config.yml')
 
 if __name__ == "__main__":
-    # request_replay('kk-XPS-15-9570')
-    # wait('kk-XPS-15-9570')
-    file = open('replay.mp4', 'rb')
-    send_replay(file)
+    request_replay('kk-XPS-15-9570')
+    wait('kk-XPS-15-9570')
+    # file = open('replay.mp4', 'rb')
+    # send_replay(file)
     # while True: 
     #     time.sleep(1)
     #     print(replay_requested())
