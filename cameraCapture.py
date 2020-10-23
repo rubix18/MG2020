@@ -2,77 +2,52 @@ import cv2
 import numpy as np
 import findAffineMatrix as am
 
-image_file = 'line.jpg'
-field_file = 'field.jpg'
-
-point_list = []
-field_point = []
 
 
-def click_event(event, x, y, flags, param):
+def affineMatrix(in_points, map_to_points) :
+
+    # calculations
+    l = len(in_points)
+    B = np.vstack([np.transpose(in_points), np.ones(l)])
+    D = 1.0 / np.linalg.det(B)
+    entry = lambda r,d: np.linalg.det(np.delete(np.vstack([r, B]), (d+1), axis=0))
+    M = [[(-1)**i * D * entry(R, i) for i in range(l)] for R in np.transpose(map_to_points)]
+    A, t = np.hsplit(np.array(M), [l-1])
+    t = np.transpose(t)[0]
+
+    # output
+    print("Affine transformation matrix:\n", A)
+    print("Affine transformation translation vector:\n", t)
+    # unittests
+    print("TESTING:")
+    for p, P in zip(np.array(in_points), np.array(map_to_points)):
+      image_p = np.dot(A, p) + t
+      result = "[OK]" if np.allclose(image_p, P) else "[ERROR]"
+      print(p, " mapped to: ", image_p, " ; expected: ", P, result)
+
+    return A, t
+
+def click_event(event, x, y, flags, params):
     if event == cv2.EVENT_LBUTTONDOWN:
         print(x,",",y)
-        point_list.append([x,y])
+        params[1].append([x,y])
         font = cv2.FONT_HERSHEY_SIMPLEX
         strXY = str(x)+", "+str(y)
-        cv2.circle(img, (x,y), 2 , (0,0,255), 2)
-        cv2.putText(img, strXY, (x+5,y), font, 0.5, (255,255,0), 2)
-        cv2.imshow("image", img)
+        cv2.circle(params[0], (x,y), 2 , (0,0,255), 2)
+        cv2.putText(params[0], strXY, (x+5,y), font, 0.5, (255,255,0), 2)
+        cv2.imshow("image", params[0])
 
 
-def click_event_2(event, x, y, flags, param):
+def click_event_2(event, x, y, flags, params):
     if event == cv2.EVENT_LBUTTONDOWN:
         print(x,",",y)
-        field_point.append([x,y])
+        params[1].append([x,y])
         font = cv2.FONT_HERSHEY_SIMPLEX
         strXY = str(x)+", "+str(y)
-        cv2.circle(field_img, (x,y), 2 , (0,0,255), 2)
-        cv2.putText(field_img, strXY, (x+5,y), font, 0.5, (255,255,0), 2)
-        cv2.imshow("field_image", field_img)
+        cv2.circle(params[0], (x,y), 2 , (0,0,255), 2)
+        cv2.putText(params[0], strXY, (x+5,y), font, 0.5, (255,255,0), 2)
+        cv2.imshow("field_image", params[0])
 
-#image_file = 'line.jpg'
-#img = cv2.imread(image_file)
 
-# print("Started")
-# cap = cv2.VideoCapture(-1)
-#
-# img = cap.read() # Initial image
-#
-# while True:
-# 	ret, img = cap.read()
-# 	imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#
-# 	cv2.imshow("image", img)
-#
-# 	if cv2.waitKey(1) & 0xFF == ord('q'):
-#         	break
-#
-#
-# cv2.imshow("image", img)
-# cv2.waitKey(0)
 
-#Here, you need to change the image name and it's path according to your directory
-img = cv2.imread(image_file)
-cv2.imshow("image", img)
 
-#calling the mouse click event
-cv2.setMouseCallback("image", click_event)
-cv2.waitKey(0)
-
-field_img = cv2.imread(field_file)
-cv2.imshow("field_image", field_img)
-
-#calling the mouse click event
-cv2.setMouseCallback("field_image", click_event_2)
-cv2.waitKey(0)
-
-cv2.destroyAllWindows()
-A_matrix, translation_vector = am.affineMatrix(point_list, field_point)
-
-print("Transform new point:")
-test_point = [881, 273]
-image_p = np.dot(A_matrix, test_point) + translation_vector
-print(test_point, " mapped to: ", image_p)
-
-#print("Here 3")
-# cap.release()
