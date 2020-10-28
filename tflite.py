@@ -17,12 +17,29 @@ import importlib.util
 import ffmpeg
 import queue
 import cameraCapture as cc
+import requests
+
 
 # Import database client 
 # from dbclient import dbclient as db
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
+
+
+# Import database client 
+try:
+    from dbclient.dbclient import (
+        # functions
+        update,             # usage: update(src_loc, ball_xy, players_xy)
+        select_all,         # usage: select_all(table_name)
+        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
+        send_replay         # usage: send_replay()
+    )
+except: 
+    print("[TFLITE]: Database not found!")
+
+
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
     def __init__(self,resolution=(640,480),framerate=30,camera=0):
@@ -90,9 +107,35 @@ class VideoStream:
             )
         process.stdin.close()
         process.wait()
+        file = open('replay.mp4', 'rb')
+        try:
+          send_replay(file)
+        except:
+          print("Send replay failed")
         
 def sendToDatabase():
     pass
+
+def saveVideoStream(q):
+    frames = np.array(q.queue)
+    _, height, width, _ = frames.shape
+    process = (
+        ffmpeg
+            .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
+            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+            .overwrite_output()
+            .run_async(pipe_stdin=True)
+    )
+    for frame in frames:
+        process.stdin.write(
+            frame
+                .astype(np.uint8)
+                .tobytes()
+        )
+    process.stdin.close()
+    process.wait()
+    file = open('replay.mp4', 'rb')
+    send_replay(file)
 
 def main():
     # Define and parse input arguments
@@ -351,6 +394,20 @@ def main():
         elif key == ord('s'):
             print("Saving")
             videostream.saveStream()
+
+        # Instead of checking keypress, query database to see if request has been made for video file,
+        # if yes, execute saveStream(), then post the video to server
+        try: 
+          if replay_requested():
+              print("Saving Video File to Send To Server")
+              if tryThreading:
+                  thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+                  thread.start()
+              else:
+                  videostream.saveStream()
+              print('hello')
+        except: 
+            print("[TFLITE]: Error! ")
 
     # Clean up
     cv2.destroyAllWindows()
