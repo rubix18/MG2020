@@ -72,13 +72,13 @@ class VideoStream:
     # Indicate that the camera and thread should be stopped
         self.stopped = True
         
-    def saveStream(self):
+    def saveStream(self,frameRate):
         frames = np.array(self.queue.queue)
         _, height, width, _ = frames.shape
         process = (
             ffmpeg
                 .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
-                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=frameRate, preset='superfast')
                 .overwrite_output()
                 .run_async(pipe_stdin=True)
         )
@@ -177,8 +177,7 @@ def main():
     output_details = interpreter.get_output_details()
     height = input_details[0]['shape'][1]
     width = input_details[0]['shape'][2]
-    print(height)
-    print(width)
+    
 
     floating_model = (input_details[0]['dtype'] == np.float32)
 
@@ -197,15 +196,16 @@ def main():
     field_point = []
     print("Started")
     cap = cv2.VideoCapture(0)
-    print(imH)
     cap.set(3,imW)
     cap.set(4,imH)
     
     test_img = cap.read() # Initial image
+    bigW = 1920
+    bigH = 950
     
     while True:
         ret, test_img = cap.read()
-        test_img = cv2.resize(test_img,(imW,imH))
+        test_img = cv2.resize(test_img,(bigW,bigH))
         imgGray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
     
         cv2.imshow("image", test_img)
@@ -222,10 +222,13 @@ def main():
     # cv2.imshow("image", test_img)
 
     #calling the mouse click event
+    #while len(point_list) < 2: 
     cv2.setMouseCallback("image", cc.click_event, [test_img, point_list])
+        #print(len(point_list))
     cv2.waitKey(0)
 
     field_img = cv2.imread(field_file)
+    field_img = cv2.resize(field_img,(bigW,bigH))
     cv2.imshow("field_image", field_img)
 
     #calling the mouse click event
@@ -300,9 +303,6 @@ def main():
                 ymin = int(max(1,(boxes[i][0] * imH)))
                 xmin = int(max(1,(boxes[i][1] * imW)))
                 ymax = int(min(imH,(boxes[i][2] * imH)))
-                print(ymin)
-                print(ymax)
-                print('---------------')
                 xmax = int(min(imW,(boxes[i][3] * imW)))
                 
                 xcen = int(xmin + (xmax-xmin)/2) 
@@ -354,7 +354,7 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
-            videostream.saveStream()
+            videostream.saveStream(frame_rate_calc)
 
     # Clean up
     cv2.destroyAllWindows()
