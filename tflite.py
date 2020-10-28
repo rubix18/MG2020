@@ -375,16 +375,27 @@ def main():
                 cx = int(image_p[0])
                 cy = int(image_p[1])
                 
-                if (cx < min_x_out) or (cx > max_x_out):
-                    flag_out = 1
-                if (cy < min_y_out) or (cy > max_y_out):
-                    flag_out = 1
-                
-                if flag_out == 1:
-                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 255, 255), 10)
+                #
+                #person = 0
+                #sports ball = 36
+                currentDetect = int(classes[i])
+                if currentDetect == 36:
+                    if (cx < min_x_out) or (cx > max_x_out):
+                        flag_out = 1
+                    if (cy < min_y_out) or (cy > max_y_out):
+                        flag_out = 1
+                    
+                    if flag_out == 1:
+                        field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (255, 255, 255), 10)
+                        
+                    else:
+                        field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 255, 255), 10)
+                        
+                elif currentDetect == 0:
+                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
                     
                 else:
-                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 0), 10)
                     
                 cv2.imshow("adjusted_image", field_image_with_point)
                 
@@ -397,7 +408,6 @@ def main():
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
-                #if object_name == person:
                 detection_labels.append(object_name)    # Append object name to list of object names to be sent to database 
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
