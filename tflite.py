@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import sys
 import time
-from threading import Thread
+import threading
 import importlib.util
 import ffmpeg
 import queue
@@ -177,8 +177,6 @@ def main():
     output_details = interpreter.get_output_details()
     height = input_details[0]['shape'][1]
     width = input_details[0]['shape'][2]
-    print(height)
-    print(width)
 
     floating_model = (input_details[0]['dtype'] == np.float32)
 
@@ -195,9 +193,7 @@ def main():
 
     point_list = []
     field_point = []
-    print("Started")
     cap = cv2.VideoCapture(0)
-    print(imH)
     cap.set(3,imW)
     cap.set(4,imH)
     
