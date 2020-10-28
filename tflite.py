@@ -18,6 +18,7 @@ import ffmpeg
 import queue
 import cameraCapture as cc
 import requests
+import tracemalloc
 
 
 # Import database client 
@@ -28,21 +29,21 @@ import requests
 
 
 # Import database client 
-try:
-    from dbclient.dbclient import (
+#try:
+#    from dbclient.dbclient import (
         # functions
-        update,             # usage: update(src_loc, ball_xy, players_xy)
-        select_all,         # usage: select_all(table_name)
-        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
-        send_replay         # usage: send_replay()
-    )
-except: 
-    print("[TFLITE]: Database not found!")
+#        update,             # usage: update(src_loc, ball_xy, players_xy)
+#        select_all,         # usage: select_all(table_name)
+#        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
+#        send_replay         # usage: send_replay()
+#    )
+#except: 
+#    print("[TFLITE]: Database not found!")
 
 
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
-    def __init__(self,resolution=(640,480),framerate=30,camera=0):
+    def __init__(self,resolution=(640,480),framerate=10,camera=0):
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(camera)
         self.queue = queue.Queue(900)
@@ -58,27 +59,29 @@ class VideoStream:
 
     def start(self):
     # Start the thread that reads frames from the video stream
-        Thread(target=self.update,args=()).start()
+        #threading.Thread(target=self.update,args=()).start()
         return self
 
     def update(self):
         # Keep looping indefinitely until the thread is stopped
-        while True:
+        #while True:
             # If the camera is stopped, stop the thread
-            if self.stopped:
-                # Close camera resources
-                self.stream.release()
-                return
+        if self.stopped:
+            # Close camera resources
+            self.stream.release()
+            return
 
-            # Otherwise, grab the next frame from the stream
-            (self.grabbed, self.frame) = self.stream.read()
-            
-            # Update queue
-            if not self.queue.full():
-                self.queue.put(self.frame)
-            else:
-                self.queue.get()
-                self.queue.put(self.frame)
+        # Otherwise, grab the next frame from the stream
+        (self.grabbed, self.frame) = self.stream.read()
+        
+        
+        # Update queue
+        if not self.queue.full():
+            self.queue.put(self.frame)
+        else:
+            f = self.queue.get()
+            del f
+            self.queue.put(self.frame)
             
 
     def read(self):
@@ -138,6 +141,7 @@ def saveVideoStream(q):
     send_replay(file)
 
 def main():
+    tracemalloc.start()
     # Define and parse input arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--modeldir', help='Folder the .tflite file is located in',
@@ -241,7 +245,8 @@ def main():
     cap.set(4,imH)
     
     test_img = cap.read() # Initial image
-    
+    #bigW = 1920
+    #bigH = 950
     while True:
         ret, test_img = cap.read()
         test_img = cv2.resize(test_img,(imW,imH))
@@ -261,15 +266,18 @@ def main():
     # cv2.imshow("image", test_img)
 
     #calling the mouse click event
-    cv2.setMouseCallback("image", cc.click_event, [test_img, point_list])
-    cv2.waitKey(0)
+    while len(point_list) < 3: 
+        cv2.setMouseCallback("image", cc.click_event, [test_img, point_list])
+        cv2.waitKey(1)
 
     field_img = cv2.imread(field_file)
+    field_img = cv2.resize(field_img,(imW,imH))
     cv2.imshow("field_image", field_img)
 
     #calling the mouse click event
-    cv2.setMouseCallback("field_image", cc.click_event_2, [field_img, field_point])
-    cv2.waitKey(0)
+    while len(field_point) < 3:
+        cv2.setMouseCallback("field_image", cc.click_event_2, [field_img, field_point])
+        cv2.waitKey(1)
 
     cv2.destroyAllWindows()
     A_matrix, translation_vector = cc.affineMatrix(point_list, field_point)
@@ -288,25 +296,29 @@ def main():
     time.sleep(5)
 
     # Initialize video stream
-    videostream = VideoStream(resolution=(imW,imH),framerate=30, camera=camera).start()
+    videostream = VideoStream(resolution=(imW,imH),framerate=10, camera=camera).start()
     time.sleep(1)
 
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
     while True:
+        first = tracemalloc.take_snapshot()
+        videostream.update()
 
         # Start timer (for calculating frame rate)
         t1 = cv2.getTickCount()
 
         # Grab frame from video stream
-        frame1 = videostream.read()
+        frame = videostream.read()
 
         # Acquire frame and resize to expected shape [1xHxWx3]
-        frame = frame1.copy()
+        #frame = frame1.copy()
         frame = cv2.resize(frame, (imW,imH))
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (width, height))
         input_data = np.expand_dims(frame_resized, axis=0)
+        
+        
 
         # Normalize pixel values if using a floating model (i.e. if model is non-quantized)
         if floating_model:
@@ -328,6 +340,7 @@ def main():
         adjustedpoints = []
         detection_labels = []
         f_img = cv2.imread(field_file)
+        f_img = cv2.resize(f_img, (imW,imH))
 
         # Loop over all detections and draw detection box if confidence is above minimum threshold
         
@@ -339,9 +352,6 @@ def main():
                 ymin = int(max(1,(boxes[i][0] * imH)))
                 xmin = int(max(1,(boxes[i][1] * imW)))
                 ymax = int(min(imH,(boxes[i][2] * imH)))
-                print(ymin)
-                print(ymax)
-                print('---------------')
                 xmax = int(min(imW,(boxes[i][3] * imW)))
                 
                 xcen = int(xmin + (xmax-xmin)/2) 
@@ -355,14 +365,39 @@ def main():
                 # Aplly affine matrix
                 image_p = np.dot(A_matrix, (xcen,ycen)) + translation_vector
                 adjustedpoints.append(image_p)
-                field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                
+                #-------------EVENT DETECTION---------------------------------------
+                max_x_out = 1195
+                max_y_out = 688
+                min_x_out = 85
+                min_y_out = 31
+                flag_out = 0
+                cx = int(image_p[0])
+                cy = int(image_p[1])
+                
+                if (cx < min_x_out) or (cx > max_x_out):
+                    flag_out = 1
+                if (cy < min_y_out) or (cy > max_y_out):
+                    flag_out = 1
+                
+                if flag_out == 1:
+                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 255, 255), 10)
+                    
+                else:
+                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                    
                 cv2.imshow("adjusted_image", field_image_with_point)
+                
+                
+                
 
-                # Draw Bounding Box 
+                # Draw Bounding Box
+                #COMMMENT THIS OUT WHEN WE DON"T NEED IT
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
 
                 # Draw label
                 object_name = labels[int(classes[i])] # Look up object name from "labels" array using class index
+                #if object_name == person:
                 detection_labels.append(object_name)    # Append object name to list of object names to be sent to database 
                 label = '%s: %d%%' % (object_name, int(scores[i]*100)) # Example: 'person: 72%'
                 labelSize, baseLine = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2) # Get font size
@@ -408,6 +443,14 @@ def main():
               print('hello')
         except: 
             print("[TFLITE]: Error! ")
+            
+            
+        snap = tracemalloc.take_snapshot()
+        stats = snap.compare_to(first, 'lineno')
+        print(stats[0])
+        print(stats[0].traceback.format())
+
+        #cv2.waitKey(0)
 
     # Clean up
     cv2.destroyAllWindows()
