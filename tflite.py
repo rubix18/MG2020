@@ -1,4 +1,4 @@
-# [USAGE]: python3 tflite.py --modeldir=model --camera=0
+# [USAGE]: python3 tflite.py --modeldir=model
 
 # NOTES: 
 # Press S to save replay 
@@ -12,49 +12,35 @@ import cv2
 import numpy as np
 import sys
 import time
-import threading
+from threading import Thread
 import importlib.util
 import ffmpeg
 import queue
 import cameraCapture as cc
 
-# Change to get rid of multithreading for saving video
-tryThreading = True
-import requests
-
-
 # Import database client 
-try:
-    from dbclient.dbclient import (
-        # functions
-        update,             # usage: update(src_loc, ball_xy, players_xy)
-        select_all,         # usage: select_all(table_name)
-        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
-        send_replay         # usage: send_replay()
-    )
-except: 
-    print("[TFLITE]: Database not found!")
+# from dbclient import dbclient as db
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
-    def __init__(self,resolution=(320,240),framerate=30,camera=0):
+    def __init__(self,resolution=(640,480),framerate=30,camera=0):
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(camera)
         self.queue = queue.Queue(900)
-        # ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        #ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
             
         # Read first frame from the stream
         (self.grabbed, self.frame) = self.stream.read()
 
-	# Variable to control when the camera is stopped
+    # Variable to control when the camera is stopped
         self.stopped = False
 
     def start(self):
-	# Start the thread that reads frames from the video stream
+    # Start the thread that reads frames from the video stream
         Thread(target=self.update,args=()).start()
         return self
 
@@ -79,11 +65,11 @@ class VideoStream:
             
 
     def read(self):
-	# Return the most recent frame
+    # Return the most recent frame
         return self.frame
 
     def stop(self):
-	# Indicate that the camera and thread should be stopped
+    # Indicate that the camera and thread should be stopped
         self.stopped = True
         
     def saveStream(self):
@@ -104,35 +90,9 @@ class VideoStream:
             )
         process.stdin.close()
         process.wait()
-        file = open('replay.mp4', 'rb')
-        try:
-          send_replay(file)
-        except:
-          print("Send replay failed")
         
 def sendToDatabase():
     pass
-
-def saveVideoStream(q):
-    frames = np.array(q.queue)
-    _, height, width, _ = frames.shape
-    process = (
-        ffmpeg
-            .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
-            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
-            .overwrite_output()
-            .run_async(pipe_stdin=True)
-    )
-    for frame in frames:
-        process.stdin.write(
-            frame
-                .astype(np.uint8)
-                .tobytes()
-        )
-    process.stdin.close()
-    process.wait()
-    file = open('replay.mp4', 'rb')
-    send_replay(file)
 
 def main():
     # Define and parse input arguments
@@ -162,7 +122,7 @@ def main():
     imW, imH = int(resW), int(resH)
     camera = int(args.camera)
     use_TPU = args.edgetpu
-
+   
     # Import TensorFlow libraries
     # If tflite_runtime is installed, import interpreter from tflite_runtime, else import from regular tensorflow
     # If using Coral Edge TPU, import the load_delegate library
@@ -217,6 +177,8 @@ def main():
     output_details = interpreter.get_output_details()
     height = input_details[0]['shape'][1]
     width = input_details[0]['shape'][2]
+    print(height)
+    print(width)
 
     floating_model = (input_details[0]['dtype'] == np.float32)
 
@@ -228,24 +190,28 @@ def main():
     freq = cv2.getTickFrequency()
     
     # Line detection code setup
-    image_file = 'line.jpg'
+    #image_file = 'line.jpg'
     field_file = 'field.jpg'
 
     point_list = []
     field_point = []
     print("Started")
-    cap = cv2.VideoCapture(-1)
+    cap = cv2.VideoCapture(0)
+    print(imH)
+    cap.set(3,imW)
+    cap.set(4,imH)
     
     test_img = cap.read() # Initial image
     
     while True:
-    	ret, test_img = cap.read()
-    	imgGray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
+        ret, test_img = cap.read()
+        test_img = cv2.resize(test_img,(imW,imH))
+        imgGray = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
     
-    	cv2.imshow("image", test_img)
+        cv2.imshow("image", test_img)
     
-    	if cv2.waitKey(1) & 0xFF == ord('c'):
-            	break
+        if cv2.waitKey(1) & 0xFF == ord('c'):
+                break
     
     
     cv2.imshow("image", test_img)
@@ -298,6 +264,7 @@ def main():
 
         # Acquire frame and resize to expected shape [1xHxWx3]
         frame = frame1.copy()
+        frame = cv2.resize(frame, (imW,imH))
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_resized = cv2.resize(frame_rgb, (width, height))
         input_data = np.expand_dims(frame_resized, axis=0)
@@ -333,9 +300,13 @@ def main():
                 ymin = int(max(1,(boxes[i][0] * imH)))
                 xmin = int(max(1,(boxes[i][1] * imW)))
                 ymax = int(min(imH,(boxes[i][2] * imH)))
+                print(ymin)
+                print(ymax)
+                print('---------------')
                 xmax = int(min(imW,(boxes[i][3] * imW)))
+                
                 xcen = int(xmin + (xmax-xmin)/2) 
-                # ycen = int(ymin + (ymax-ymin)/2) 
+                #ycen = int(ymin + (ymax-ymin)/2) 
                 ycen = int(ymax) 
                 centerpoints.append((xcen, ycen))   # Append centerpoint to list of centerpoints to be sent to database 
 
@@ -363,18 +334,13 @@ def main():
 
         # Send results to database 
         # print(centerpoints, ', '.join(detection_labels))  # Debug print 
-        try: 
-            update('right hand corner', centerpoints, ', '.join(detection_labels)) # Use join() to send labels as single string 
-            # print(select_all('events'))
-        except: 
-            print("[TFLITE]: Database error!")
-
+        # db.update('right hand corner', centerpoints, ', '.join(detection_labels), db.engine) # Use join() to send labels as single string 
 
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
-        # cv2.imshow('Object detector', frame)
+        cv2.imshow('Object detector', frame)
 
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -388,26 +354,7 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
-            if tryThreading:
-                thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
-                thread.start()
-            else:
-                videostream.saveStream()
-        
-        # Instead of checking keypress, query database to see if request has been made for video file,
-        # if yes, execute saveStream(), then post the video to server
-        try: 
-          if replay_requested():
-              print("Saving Video File to Send To Server")
-              if tryThreading:
-                  thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
-                  thread.start()
-              else:
-                  videostream.saveStream()
-              print('hello')
-        except: 
-            print("[TFLITE]: Error! ")
-
+            videostream.saveStream()
 
     # Clean up
     cv2.destroyAllWindows()
