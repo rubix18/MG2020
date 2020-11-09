@@ -139,7 +139,7 @@ def saveVideoStream(q):
     process.wait()
     file = open('replay.mp4', 'rb')
     send_replay(file)
-
+#1280x720
 def main():
     tracemalloc.start()
     # Define and parse input arguments
@@ -153,7 +153,7 @@ def main():
     parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
                         default=0.5)
     parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                        default='1280x720')
+                        default='640x480')
     parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
                         action='store_true')
     parser.add_argument('--camera', help='Choose camera input',
@@ -245,8 +245,8 @@ def main():
     cap.set(4,imH)
     
     test_img = cap.read() # Initial image
-    #bigW = 1920
-    #bigH = 950
+    bigW = 1920
+    bigH = 950
     while True:
         ret, test_img = cap.read()
         test_img = cv2.resize(test_img,(imW,imH))
@@ -391,7 +391,7 @@ def main():
                     else:
                         field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 255, 255), 10)
                         
-                elif currentDetect == 0:
+                elif currentDetect ==0:
                     field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
                     
                 else:
