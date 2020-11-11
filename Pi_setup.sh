@@ -16,4 +16,4 @@ pip3 install https://github.com/google-coral/pycoral/releases/download/release-f
 
 sudo apt upgrade libedgetpu1-std
 
-pip3 install https://dl.google.com/coral/python/tflite_runtime-2.1.0-cp37-cp37m-linux_armv7l.whl’.
+pip3 install https://dl.google.com/coral/python/tflite_runtime-2.1.0-cp37-cp37m-linux_armv7l.whl
