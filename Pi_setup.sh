@@ -1,5 +1,3 @@
-git clone https://github.com/rubix18/MG2020.git
-
 cd ~/MG2020
 source tflite1-env/bin/activate
 
