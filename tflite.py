@@ -54,8 +54,11 @@ class VideoStream:
         # Read first frame from the stream
         (self.grabbed, self.frame) = self.stream.read()
 
-    # Variable to control when the camera is stopped
+        # Variable to control when the camera is stopped
         self.stopped = False
+        
+        # Variable to keep track of reply frame count
+        self.postReplyCount = 0
 
     def start(self):
     # Start the thread that reads frames from the video stream
@@ -302,8 +305,13 @@ def main():
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
     while True:
-        first = tracemalloc.take_snapshot()
+#         first = tracemalloc.take_snapshot()
         videostream.update()
+        
+        if videostream.postReplyCount > 0:
+            videostream.postReplyCount -= 1
+            if videostream.postReplyCount == 0:
+                videostream.saveStream()
 
         # Start timer (for calculating frame rate)
         t1 = cv2.getTickCount()
@@ -400,8 +408,6 @@ def main():
                 cv2.imshow("adjusted_image", field_image_with_point)
                 
                 
-                
-
                 # Draw Bounding Box
                 #COMMMENT THIS OUT WHEN WE DON"T NEED IT
                 cv2.rectangle(frame, (xmin,ymin), (xmax,ymax), (10, 255, 0), 2)
@@ -425,6 +431,7 @@ def main():
 
         # All the results have been drawn on the frame, so it's time to display it.
         cv2.imshow('Object detector', frame)
+        print("Frame rate:", frame_rate_calc)
 
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -438,7 +445,9 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
-            videostream.saveStream()
+            # Begin count for post-event frames
+            videostream.postReplyCount = 150
+#             videostream.saveStream()
 
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
@@ -455,10 +464,10 @@ def main():
             print("[TFLITE]: Error! ")
             
             
-        snap = tracemalloc.take_snapshot()
-        stats = snap.compare_to(first, 'lineno')
-        print(stats[0])
-        print(stats[0].traceback.format())
+#         snap = tracemalloc.take_snapshot()
+#         stats = snap.compare_to(first, 'lineno')
+#         print(stats[0])
+#         print(stats[0].traceback.format())
 
         #cv2.waitKey(0)
 
