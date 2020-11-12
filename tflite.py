@@ -22,23 +22,23 @@ import tracemalloc
 
 
 # Import database client 
-# from dbclient import dbclient as db
+from dbclient import dbclient as db
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
 
 
 # Import database client 
-#try:
-#    from dbclient.dbclient import (
+try:
+   from dbclient.dbclient import (
         # functions
-#        update,             # usage: update(src_loc, ball_xy, players_xy)
-#        select_all,         # usage: select_all(table_name)
-#        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
-#        send_replay         # usage: send_replay()
-#    )
-#except: 
-#    print("[TFLITE]: Database not found!")
+       update,             # usage: update(src_loc, ball_xy, players_xy)
+       select_all,         # usage: select_all(table_name)
+       replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
+       send_replay         # usage: send_replay()
+   )
+except: 
+   print("[TFLITE]: Database not found!")
 
 
 class VideoStream:
@@ -240,7 +240,7 @@ def main():
 
     point_list = []
     field_point = []
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(camera)
     cap.set(3,imW)
     cap.set(4,imH)
     
@@ -442,17 +442,26 @@ def main():
 
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
-        try: 
-          if replay_requested():
-              print("Saving Video File to Send To Server")
-              if tryThreading:
-                  thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
-                  thread.start()
-              else:
-                  videostream.saveStream()
-              print('hello')
-        except: 
-            print("[TFLITE]: Error! ")
+        if replay_requested():
+            print("Saving Video File to Send To Server")
+            # if tryThreading:
+            #     thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+            #     thread.start()
+            # else:
+            videostream.saveStream()
+            print('hello')
+
+        # try: 
+        #   if replay_requested():
+        #       print("Saving Video File to Send To Server")
+        #       if tryThreading:
+        #           thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
+        #           thread.start()
+        #       else:
+        #           videostream.saveStream()
+        #       print('hello')
+        # except: 
+        #     print("[TFLITE]: Error! ")
             
             
         snap = tracemalloc.take_snapshot()
