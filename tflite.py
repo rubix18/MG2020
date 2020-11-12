@@ -454,12 +454,7 @@ def main():
         try: 
           if replay_requested():
               print("Saving Video File to Send To Server")
-              if tryThreading:
-                  thread = threading.Thread(target=saveVideoStream, args=[videostream.queue])
-                  thread.start()
-              else:
-                  videostream.saveStream()
-              print('hello')
+              videostream.postReplayCount = 150
         except: 
             print("[TFLITE]: Error! ")
             
