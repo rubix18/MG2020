@@ -85,8 +85,8 @@ def ping_test():
     For testing purposes: Continuously insert into database every 1 second
     """
     while True:
-        update('right corner', [1, 2], [[3, 4], [30, 40], [32, 10]], engine)
-        print(select_all('events', engine))
+        update('right corner', [1, 2], [[3, 4], [30, 40], [32, 10]])
+        print(select_all('events'))
         time.sleep(1)
 
 def truncate():

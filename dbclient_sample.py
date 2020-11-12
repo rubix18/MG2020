@@ -11,7 +11,7 @@ from dbclient.dbclient import (
 )
 
 def main(): 
-    ping_test(engine)
+    ping_test()
 
 if __name__ == "__main__":
     main()
