@@ -129,6 +129,7 @@ def request_replay(hostname):
 
 def clear_replay(): 
     # after sending the file, reset the pi's own flag to 0 
+    print(f'[DBCLIENT]: Sending statement to reset replay requested flag for {socket.gethostname()}')
     stmt = f"update flags set replay = false where hostname = '{socket.gethostname()}';"
     with engine.connect() as con: 
         con.execute(stmt)

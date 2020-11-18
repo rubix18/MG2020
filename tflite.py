@@ -28,23 +28,25 @@ sio = socketio.Client()
 sio.connect('http://10.3.141.1:5002', namespaces=['/test'])
 
 # Import database client 
-# from dbclient import dbclient as db
+from dbclient import dbclient as db
 
 # Define VideoStream class to handle streaming of video from webcam in separate processing thread
 # Source - Adrian Rosebrock, PyImageSearch: https://www.pyimagesearch.com/2015/12/28/increasing-raspberry-pi-fps-with-python-and-opencv/
 
+replay_flag = 1
 
 # Import database client 
-#try:
-#    from dbclient.dbclient import (
+try:
+    from dbclient.dbclient import (
         # functions
-#        update,             # usage: update(src_loc, ball_xy, players_xy)
-#        select_all,         # usage: select_all(table_name)
-#        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
-#        send_replay         # usage: send_replay()
-#    )
-#except: 
-#    print("[TFLITE]: Database not found!")
+        update,             # usage: update(src_loc, ball_xy, players_xy)
+        select_all,         # usage: select_all(table_name)
+        replay_requested,   # usage: replay_requested(), returns 0 or 1 if replay has been requested by this pi
+        send_replay,         # usage: send_replay()
+        clear_replay
+    )
+except: 
+    print("[TFLITE]: Database not found!")
 
 
 class VideoStream:
@@ -102,6 +104,7 @@ class VideoStream:
         self.stopped = True
         
     def saveStream(self, replayName, timestamp):
+        global replay_flag
         frames = np.array(self.queue.queue)
         _, height, width, _ = frames.shape
         process = (
@@ -119,11 +122,12 @@ class VideoStream:
             )
         process.stdin.close()
         process.wait()
-        file = open('replay.mp4', 'rb')
-        try:
-          send_replay(file)
-        except:
-          print("Send replay failed")
+        file = open(replayName+'.mp4', 'rb')
+#        try:
+        send_replay(file)
+        replay_flag = 1
+#        except:
+#          print("Send replay failed")
         
 def sendToDatabase():
     pass
@@ -308,7 +312,7 @@ def main():
     videostream = VideoStream(resolution=(imW,imH),framerate=10, camera=camera).start()
     time.sleep(1)
     
-    flag_in = 1;
+    flag_in = 1
     
     eventType = "TestEvent"
 
@@ -322,9 +326,10 @@ def main():
             if videostream.postReplayCount == 0:
                 now = datetime.now()
                 timestamp = now.strftime("%H-%M-%S")
-                replayThread = threading.Thread(target=videostream.saveStream(eventType, timestamp))
-                replayThread.daemon = True
-                replayThread.start()
+                videostream.saveStream(eventType, timestamp)
+                #replayThread = threading.Thread(target=videostream.saveStream(eventType, timestamp))
+                #replayThread.daemon = True
+                #replayThread.start()
 
         # Start timer (for calculating frame rate)
         t1 = cv2.getTickCount()
@@ -499,10 +504,18 @@ def main():
 
         # Instead of checking keypress, query database to see if request has been made for video file,
         # if yes, execute saveStream(), then post the video to server
+        
+        global replay_flag
+        
         try: 
-          if replay_requested():
+          if replay_requested() and replay_flag == 1:
               print("Saving Video File to Send To Server")
-              videostream.postReplayCount = 150
+              # clear_replay()
+              videostream.postReplayCount = 50
+              replay_flag = 0
+              
+              # set flag to 0  
+              # videostream.saveStream()
         except: 
             pass
             #print("[TFLITE]: Error! ")
@@ -516,7 +529,9 @@ def main():
         #cv2.waitKey(0)
 
     # Clean up
+    
     cv2.destroyAllWindows()
+    sio.disconnect()
     videostream.stop()
 
 
