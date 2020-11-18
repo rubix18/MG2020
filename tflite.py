@@ -101,7 +101,7 @@ class VideoStream:
         process = (
             ffmpeg
                 .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
-                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=15, preset='superfast')
                 .overwrite_output()
                 .run_async(pipe_stdin=True)
         )
