@@ -19,7 +19,13 @@ import queue
 import cameraCapture as cc
 import requests
 import tracemalloc
+import socketio
+import socket
+from datetime import datetime
 
+
+sio = socketio.Client()
+sio.connect('http://10.3.141.1:5002', namespaces=['/test'])
 
 # Import database client 
 # from dbclient import dbclient as db
@@ -43,10 +49,10 @@ import tracemalloc
 
 class VideoStream:
     """Camera object that controls video streaming from the Picamera"""
-    def __init__(self,resolution=(640,480),framerate=10,camera=0):
+    def __init__(self,resolution=(1920,950),framerate=5,camera=0):
         # Initialize the PiCamera and the camera image stream
         self.stream = cv2.VideoCapture(camera)
-        self.queue = queue.Queue(900)
+        self.queue = queue.Queue(300)
         #ret = self.stream.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         ret = self.stream.set(3,resolution[0])
         ret = self.stream.set(4,resolution[1])
@@ -58,7 +64,7 @@ class VideoStream:
         self.stopped = False
         
         # Variable to keep track of reply frame count
-        self.postReplyCount = 0
+        self.postReplayCount = 0
 
     def start(self):
     # Start the thread that reads frames from the video stream
@@ -95,13 +101,13 @@ class VideoStream:
     # Indicate that the camera and thread should be stopped
         self.stopped = True
         
-    def saveStream(self):
+    def saveStream(self, replayName, timestamp):
         frames = np.array(self.queue.queue)
         _, height, width, _ = frames.shape
         process = (
             ffmpeg
-                .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
-                .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+                .input('pipe:', format='rawvideo', r=15, pix_fmt='bgr24', s='{}x{}'.format(width, height))
+                .output(replayName+'.mp4', pix_fmt='yuv420p', vcodec='libx264', preset='superfast')
                 .overwrite_output()
                 .run_async(pipe_stdin=True)
         )
@@ -128,7 +134,7 @@ def saveVideoStream(q):
     process = (
         ffmpeg
             .input('pipe:', format='rawvideo', pix_fmt='bgr24', s='{}x{}'.format(width, height))
-            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=30, preset='superfast')
+            .output('replay.mp4', pix_fmt='yuv420p', vcodec='libx264', r=15, preset='superfast')
             .overwrite_output()
             .run_async(pipe_stdin=True)
     )
@@ -301,17 +307,24 @@ def main():
     # Initialize video stream
     videostream = VideoStream(resolution=(imW,imH),framerate=10, camera=camera).start()
     time.sleep(1)
-
+    
+    flag_in = 1;
+    
+    eventType = "TestEvent"
 
     #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
     while True:
 #         first = tracemalloc.take_snapshot()
         videostream.update()
         
-        if videostream.postReplyCount > 0:
-            videostream.postReplyCount -= 1
-            if videostream.postReplyCount == 0:
-                videostream.saveStream()
+        if videostream.postReplayCount > 0:
+            videostream.postReplayCount -= 1
+            if videostream.postReplayCount == 0:
+                now = datetime.now()
+                timestamp = now.strftime("%H-%M-%S")
+                replayThread = threading.Thread(target=videostream.saveStream(eventType, timestamp))
+                replayThread.daemon = True
+                replayThread.start()
 
         # Start timer (for calculating frame rate)
         t1 = cv2.getTickCount()
@@ -375,33 +388,67 @@ def main():
                 adjustedpoints.append(image_p)
                 
                 #-------------EVENT DETECTION---------------------------------------
-                max_x_out = 1195
-                max_y_out = 688
-                min_x_out = 85
-                min_y_out = 31
+                max_x_out = imW*(1195/1280)
+                max_y_out = imH*(688/720)
+                min_x_out = imW*(85/1280)
+                min_y_out = imH*(31/720)
+                
+                goal_y_min = imH*(409/950)
+                goal_y_max = imH*(543/950)
+                
                 flag_out = 0
+                flag_goal = 0
+                
                 cx = int(image_p[0])
                 cy = int(image_p[1])
                 
                 #
-                #person = 0
-                #sports ball = 36
+                #person is 0 on list
+                #sports ball is 36
                 currentDetect = int(classes[i])
-                if currentDetect == 36:
+                if currentDetect == 0:
+                    
                     if (cx < min_x_out) or (cx > max_x_out):
-                        flag_out = 1
+                        if(cy > goal_y_min) and (cy < goal_y_max):
+                            flag_goal = 1
+                        else:
+                            flag_out = 1
                     if (cy < min_y_out) or (cy > max_y_out):
                         flag_out = 1
-                    
-                    if flag_out == 1:
-                        field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (255, 255, 255), 10)
                         
+                    #Plotting dots for visualization    
+                    if flag_goal == 1:
+                            field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (255, 255), 10)
+                    elif flag_out == 1:
+                            field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (255, 255, 255), 10)
                     else:
                         field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 255, 255), 10)
                         
-                elif currentDetect ==0:
-                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
                     
+                    #Sending Message Should only occur once unless ball is back in
+                    if flag_goal == 1 and flag_in == 1:
+                            print("goalllll")
+                            eventType = "Goal"
+                            videostream.postReplayCount = 150
+                            flag_in = 0
+                            now = datetime.now()
+                            timestamp = now.strftime("%H-%M-%S")
+                            sio.emit('message', f"{socket.gethostname()}: Goal {timestamp}")
+                    elif flag_out == 1 and flag_in == 1:
+                            print("outtttt")
+                            eventType = "OutOfBounds"
+                            flag_in = 0
+                            now = datetime.now()
+                            timestamp = now.strftime("%H-%M-%S")
+                            sio.emit('message', f"{socket.gethostname()}: Out {timestamp}")
+                    elif flag_out == 0 and flag_goal == 0:
+                        flag_in = 1
+                        
+                        
+                elif currentDetect ==36:
+                    field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 255), 10)
+                
+                #if we want to see other detections on the map
                 else:
                     field_image_with_point = cv2.circle(f_img, (int(image_p[0]), int(image_p[1])), 2, (0, 0, 0), 10)
                     
@@ -431,7 +478,7 @@ def main():
 
         # All the results have been drawn on the frame, so it's time to display it.
         cv2.imshow('Object detector', frame)
-        print("Frame rate:", frame_rate_calc)
+        #print("Frame rate:", frame_rate_calc)
 
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -445,8 +492,9 @@ def main():
             break
         elif key == ord('s'):
             print("Saving")
+            eventType = "Request"
             # Begin count for post-event frames
-            videostream.postReplyCount = 150
+            videostream.postReplayCount = 150
 #             videostream.saveStream()
 
         # Instead of checking keypress, query database to see if request has been made for video file,
@@ -456,7 +504,8 @@ def main():
               print("Saving Video File to Send To Server")
               videostream.postReplayCount = 150
         except: 
-            print("[TFLITE]: Error! ")
+            pass
+            #print("[TFLITE]: Error! ")
             
             
 #         snap = tracemalloc.take_snapshot()

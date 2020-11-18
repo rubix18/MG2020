@@ -3,10 +3,10 @@
 
 
 # Development
-URI: postgresql://pi:MG2020@192.168.1.109:5432/test
-URL: 'http://192.168.1.104:5002'  # dell 
+# URI: postgresql://pi:MG2020@192.168.1.109:5432/test
+# URL: 'http://192.168.1.104:5002'  # dell 
 # URL: 'http://192.168.1.109:5002'  # pi on lan
 
 # Production (Raspberry Pi hotspot pw: hallohallo)
-# URI: postgresql://pi:MG2020@10.3.141.1:5432/test
-# URL: 'http://10.3.141.1:5002' 
+URI: postgresql://pi:MG2020@10.3.141.1:5432/test
+URL: 'http://10.3.141.1:5002' 
